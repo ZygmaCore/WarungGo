@@ -1,0 +1,19 @@
+{
+  "name": "warunggo-wa-bot",
+  "version": "1.0.0",
+  "description": "WarungGo WhatsApp bot built with Baileys",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "sync:sheets": "node -e \"require('./src/sheetsSync').syncSheets().then(()=>console.log('Sync done')).catch(err=>{console.error(err);process.exit(1);})\""
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.3",
+    "axios": "^1.6.8",
+    "dotenv": "^16.4.5",
+    "googleapis": "^133.0.0",
+    "pino": "^9.3.2",
+    "qrcode-terminal": "^0.12.0"
+  }
+}

@@ -1,0 +1,17 @@
+[
+  {
+    "item": "indomie",
+    "harga": 3000,
+    "stok": 20
+  },
+  {
+    "item": "teh_manis",
+    "harga": 5000,
+    "stok": 8
+  },
+  {
+    "item": "ayam_geprek",
+    "harga": 15000,
+    "stok": 7
+  }
+]
