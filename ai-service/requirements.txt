@@ -2,5 +2,6 @@ fastapi
 uvicorn
 pydantic
 python-dotenv
-thefuzz
+thefuzz[speedup]
 httpx
+google-genai

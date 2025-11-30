@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from models.order_model import OrderItem
 from models.response_model import InvoiceItemResponse, InvoiceResponse
-from utils.price_calc import calculate_total
+from utils.price_calc import calculate_total, format_rupiah
 
 router = APIRouter(tags=["invoice"])
 
@@ -27,13 +27,19 @@ def _slugify(text: str) -> str:
     return re.sub(r"\s+", "_", slug).strip("_")
 
 
+def _prettify_item(slug_name: str) -> str:
+    words = slug_name.replace("_", " ").split()
+    return " ".join(word.capitalize() for word in words)
+
+
 def _format_invoice(lines: List[dict], total: int) -> str:
     body = ["*Invoice*"]
     for idx, line in enumerate(lines, start=1):
+        pretty_name = _prettify_item(line["item"])
         body.append(
-            f"{idx}. {line['item']} x{line['qty']} = {line['subtotal']}"
+            f"{idx}. {pretty_name} x{line['qty']} - {format_rupiah(line['unit_price'])} = {format_rupiah(line['subtotal'])}"
         )
-    body.append(f"Total: {total}")
+    body.append(f"Total: {format_rupiah(total)}")
     return "\n".join(body)
 
 

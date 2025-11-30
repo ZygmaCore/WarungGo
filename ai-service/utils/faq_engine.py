@@ -5,15 +5,18 @@ from __future__ import annotations
 import re
 from typing import Dict
 
-from thefuzz import process
+from thefuzz import fuzz, process
 
 FAQ_DATA: Dict[str, str] = {
     "menu": "Menu kami: indomie, nasi goreng, ayam geprek, es teh manis, kopi susu.",
-    "jam buka": "Warung buka setiap hari dari pukul 08.00 sampai 21.00 WIB.",
-    "alamat": "Warung Go beralamat di Jl. Mawar No. 10, Jakarta.",
+    "jam buka": "WarungGo buka setiap hari dari 08.00 sampai 21.00 WIB.",
+    "alamat": "Alamat WarungGo: Jl. Mawar No. 10, Jakarta.",
+    "pembayaran": "Pembayaran bisa via tunai, QRIS, atau transfer bank BCA/Mandiri.",
+    "delivery": "Kami bisa kirim sekitar radius 3km lewat ojek online.",
 }
 
 DEFAULT_FAQ_ANSWER = "Maaf, saya belum menemukan jawabannya. Silakan hubungi admin."
+MIN_FAQ_SCORE = 60
 
 
 def _normalize(text: str) -> str:
@@ -29,12 +32,18 @@ def get_faq_answer(question: str) -> str:
         return DEFAULT_FAQ_ANSWER
 
     choices = list(FAQ_DATA.keys())
-    match = process.extractOne(normalized_question, choices) if choices else None
+    match = (
+        process.extractOne(
+            normalized_question, choices, scorer=fuzz.partial_ratio
+        )
+        if choices
+        else None
+    )
     if not match:
         return DEFAULT_FAQ_ANSWER
 
     key, score = match
-    if score < 60:
+    if score < MIN_FAQ_SCORE:
         return DEFAULT_FAQ_ANSWER
 
     return FAQ_DATA[key]

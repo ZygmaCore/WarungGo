@@ -144,7 +144,7 @@ async def _parse_with_llm(text: str) -> List[OrderItem]:
         f"Text: {text}"
     )
 
-    response = await ask_llm(prompt)
+    response = await ask_llm(prompt, json_mode=True)
 
     if not response:
         return []
@@ -170,13 +170,15 @@ async def parse_order(request: OrderRequest) -> ParseOrderResponse:
 
     # Step 1: local parser
     items, confidence = _parse_locally(request.text)
+    if items and confidence < 0.4:
+        confidence = 0.4
 
     # Step 2: fallback LLM only if no local match
     if not items:
         llm_items = await _parse_with_llm(request.text)
         if llm_items:
             items = llm_items
-            confidence = 0.7  # LLM baseline confidence
+            confidence = 0.9  # LLM baseline confidence
 
     return ParseOrderResponse(
         items=items,

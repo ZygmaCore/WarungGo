@@ -8,6 +8,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from models.order_model import OrderItem
+from models.response_model import PromoResponse
 
 router = APIRouter(tags=["promo"])
 
@@ -19,27 +20,30 @@ class PromoRequest(BaseModel):
     )
 
 
-class PromoResponse(BaseModel):
-    suggestion: str
+BEVERAGE_KEYWORDS = ("es", "teh", "kopi", "jus", "air")
 
 
-def _has_beverage(items: List[OrderItem]) -> bool:
-    return any("teh" in entry.item or "kopi" in entry.item for entry in items)
+def _has_indomie(items: List[OrderItem]) -> bool:
+    return any("indomie" in entry.item for entry in items)
 
 
-def _has_main_course(items: List[OrderItem]) -> bool:
-    mains = ("nasi", "ayam", "mie", "indomie")
-    return any(any(keyword in entry.item for keyword in mains) for entry in items)
+def _beverage_qty(items: List[OrderItem]) -> int:
+    total = 0
+    for entry in items:
+        if any(keyword in entry.item for keyword in BEVERAGE_KEYWORDS):
+            total += entry.qty
+    return total
 
 
 @router.post("/promo", response_model=PromoResponse)
 async def promo_hint(payload: PromoRequest) -> PromoResponse:
     """Return a quick, rule-based promo suggestion."""
 
-    if payload.items and not _has_beverage(payload.items):
-        return PromoResponse(suggestion="Tambah es teh manis cuma 3000 aja!")
+    if payload.items and _has_indomie(payload.items):
+        return PromoResponse(suggestion="Tambah telur biar lebih mantap?")
 
-    if payload.items and _has_main_course(payload.items):
-        return PromoResponse(suggestion="Paket hemat: tambah ayam geprek + es teh hanya 15000!")
+    beverage_qty = _beverage_qty(payload.items)
+    if not payload.items or beverage_qty < 2:
+        return PromoResponse(suggestion="Mau sekalian minum?")
 
-    return PromoResponse(suggestion="Lagi ada promo kopi susu buy 1 get 1.")
+    return PromoResponse(suggestion="belum ada promo")

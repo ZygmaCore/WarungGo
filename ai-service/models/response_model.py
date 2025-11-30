@@ -16,12 +16,6 @@ class ParseOrderResponse(BaseModel):
     )
 
 
-class FaqResponse(BaseModel):
-    """Response payload for the FAQ endpoint."""
-
-    answer: str
-
-
 class InvoiceItemResponse(OrderItem):
     """Invoice line item with pricing details."""
 
@@ -35,3 +29,21 @@ class InvoiceResponse(BaseModel):
     items: List[InvoiceItemResponse] = Field(default_factory=list)
     total: int = Field(0, ge=0)
     formatted: str
+
+
+class FaqResponse(BaseModel):
+    """Response payload for the FAQ endpoint."""
+
+    answer: str
+
+
+class PromoResponse(BaseModel):
+    """Response payload for promo suggestion endpoint."""
+
+    suggestion: str
+
+
+class ChatResponse(BaseModel):
+    """Response payload for the chat endpoint."""
+
+    reply: str
