@@ -1,4 +1,4 @@
-"""Endpoints for parsing natural language orders."""
+"""Endpoints for parsing natural language orders (SAFE VERSION)."""
 
 from __future__ import annotations
 
@@ -15,14 +15,16 @@ from utils.llm_client import ask_llm
 
 router = APIRouter(tags=["order"])
 
+# -------------------------------
+# RULES / DICTIONARIES
+# -------------------------------
 STOP_WORDS = {"dan", "sama", "dong", "ya", "tolong", "pesan", "minta", "please"}
+
 MENU_CATALOG = [
     "indomie",
     "indomie goreng",
     "nasi goreng",
     "ayam geprek",
-    "nasi ayam",
-    "nasi padang",
     "es teh manis",
     "es teh tawar",
     "teh tawar",
@@ -33,20 +35,27 @@ MENU_CATALOG = [
 ]
 
 
+# -------------------------------
+# HELPERS
+# -------------------------------
 def _slugify(text: str) -> str:
     slug = re.sub(r"[^a-z0-9\s]", "", text.lower())
     return re.sub(r"\s+", "_", slug).strip("_")
 
 
 def _extract_candidates(raw_text: str) -> List[Tuple[int, str]]:
+    """
+    Extract local order pairs like "2 indomie", "3 ayam geprek".
+    """
     tokens = re.findall(r"\d+|[a-zA-Z]+", raw_text.lower())
-    candidates: List[Tuple[int, str]] = []
-    qty = None
-    buffer: List[str] = []
 
-    def flush() -> None:
+    candidates = []
+    qty = None
+    buffer = []
+
+    def flush():
         nonlocal qty, buffer
-        if qty is not None and buffer:
+        if qty and buffer:
             candidates.append((qty, " ".join(buffer)))
         qty = None
         buffer = []
@@ -56,8 +65,10 @@ def _extract_candidates(raw_text: str) -> List[Tuple[int, str]]:
             flush()
             qty = int(token)
             continue
+
         if qty is None or token in STOP_WORDS:
             continue
+
         buffer.append(token)
 
     flush()
@@ -65,78 +76,109 @@ def _extract_candidates(raw_text: str) -> List[Tuple[int, str]]:
 
 
 def _match_menu_name(candidate: str) -> Tuple[str, float]:
+    """Fuzzy match menu name against catalog."""
     if not candidate:
         return "", 0.0
 
     match = process.extractOne(candidate, MENU_CATALOG)
-    if match and match[1] >= 55:
-        slug = _slugify(match[0])
-        return slug, match[1] / 100
 
-    return _slugify(candidate), 0.4
+    if match and match[1] >= 55:
+        return _slugify(match[0]), match[1] / 100
+
+    # fallback: use raw slug
+    return _slugify(candidate), 0.40
 
 
 def _parse_locally(text: str) -> Tuple[List[OrderItem], float]:
-    parsed_items: List[OrderItem] = []
-    scores: List[float] = []
+    parsed_items = []
+    scores = []
 
     for qty, candidate in _extract_candidates(text):
         slug, score = _match_menu_name(candidate)
-        if not slug:
-            continue
-        parsed_items.append(OrderItem(item=slug, qty=max(1, qty)))
-        scores.append(score)
+        if slug:
+            parsed_items.append(OrderItem(item=slug, qty=max(1, qty)))
+            scores.append(score)
 
     confidence = sum(scores) / len(scores) if scores else 0.0
     return parsed_items, confidence
 
 
-def _extract_json_block(raw: str) -> str:
-    cleaned = raw.strip()
-    if cleaned.startswith("```") and cleaned.endswith("```"):
-        cleaned = cleaned.strip("`")
-        if cleaned.lower().startswith("json"):
-            cleaned = cleaned[4:]
-        cleaned = cleaned.strip()
-    return cleaned
+# -------------------------------
+# 100% SAFE JSON EXTRACTOR
+# -------------------------------
+def _extract_json(text: str):
+    """
+    Extract JSON safely from any LLM output.
+    Jupiter-tier protection.
+    """
+    if not text:
+        return []
+
+    # ambil substring {...} pertama
+    match = re.search(r"\{[\s\S]*\}", text)
+    if not match:
+        return []
+
+    try:
+        block = match.group(0)
+        data = json.loads(block)
+
+        # pastikan sesuai format list
+        if isinstance(data, dict) and "items" in data:
+            return data.get("items", [])
+        if isinstance(data, list):
+            return data
+        return []
+    except Exception:
+        return []
 
 
+# -------------------------------
+# CALL GEMINI (WITH SAFETY)
+# -------------------------------
 async def _parse_with_llm(text: str) -> List[OrderItem]:
     prompt = (
-        "Ubah teks berikut menjadi JSON order dengan format "
-        '[{"item": "name", "qty": number}]. '
-        "Pastikan item dislug menjadi huruf kecil dengan underscore. "
-        "Jika tidak yakin, kosongkan daftar.\n"
-        f"Teks: {text}"
+        "Extract order items ONLY as JSON like: "
+        '[{"item":"indomie","qty":2},{"item":"es_teh","qty":3}]. '
+        "Slug all names. No words outside JSON.\n"
+        f"Text: {text}"
     )
+
     response = await ask_llm(prompt)
+
     if not response:
         return []
-    try:
-        payload = json.loads(_extract_json_block(response))
-        items: List[OrderItem] = []
-        for entry in payload:
-            item = _slugify(str(entry.get("item", "")))
-            qty = int(entry.get("qty", 0))
-            if not item or qty <= 0:
-                continue
+
+    raw_items = _extract_json(response)
+
+    items = []
+    for entry in raw_items:
+        item = _slugify(str(entry.get("item", "")))
+        qty = int(entry.get("qty", 0))
+
+        if item and qty > 0:
             items.append(OrderItem(item=item, qty=qty))
-        return items
-    except (json.JSONDecodeError, TypeError, ValueError):
-        return []
+
+    return items
 
 
+# -------------------------------
+# MAIN ENDPOINT
+# -------------------------------
 @router.post("/parse_order", response_model=ParseOrderResponse)
 async def parse_order(request: OrderRequest) -> ParseOrderResponse:
-    """Parse a natural language order into structured items."""
 
+    # Step 1: local parser
     items, confidence = _parse_locally(request.text)
 
+    # Step 2: fallback LLM only if no local match
     if not items:
         llm_items = await _parse_with_llm(request.text)
         if llm_items:
             items = llm_items
-            confidence = 0.6
+            confidence = 0.7  # LLM baseline confidence
 
-    confidence = round(min(max(confidence, 0.0), 1.0), 2)
-    return ParseOrderResponse(items=items, confidence=confidence)
+    return ParseOrderResponse(
+        items=items,
+        confidence=round(max(min(confidence, 1.0), 0.0), 2),
+    )
