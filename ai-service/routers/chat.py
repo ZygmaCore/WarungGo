@@ -1,28 +1,17 @@
-"""Free-form chat endpoint backed by Gemini."""
-
-from __future__ import annotations
-
 from fastapi import APIRouter
-from pydantic import BaseModel, Field
-
-from models.response_model import ChatResponse
+from pydantic import BaseModel
 from utils.llm_client import ask_llm
 
-router = APIRouter(tags=["chat"])
+router = APIRouter()
 
 
 class ChatRequest(BaseModel):
-    text: str = Field(..., description="Pesan bebas dari user")
+    text: str
 
 
-@router.post("/chat", response_model=ChatResponse)
-async def chat(payload: ChatRequest) -> ChatResponse:
-    """Relay chat prompt to Gemini while keeping text response."""
-
-    prompt = (
-        "Kamu adalah asisten WhatsApp WarungGo yang ramah. "
-        "Jawab singkat, gunakan bahasa Indonesia santai.\n\n"
-        f"User: {payload.text}"
-    )
-    reply = await ask_llm(prompt) or "Maaf, aku belum bisa jawab sekarang."
-    return ChatResponse(reply=reply)
+@router.post("/chat")
+async def chat(req: ChatRequest):
+    resp = await ask_llm(f"lu jawab santai, pendek, indo-english, jaksel vibes. Pertanyaan: {req.text}")
+    if not resp:
+        resp = "ga tau bro 😭"
+    return {"reply": resp}

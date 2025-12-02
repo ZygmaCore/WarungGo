@@ -13,6 +13,17 @@ const router = require('./router');
 
 const AUTH_FOLDER = path.join(__dirname, '..', 'auth_state');
 
+const IGNORED_JID_SUFFIXES = ['@newsletter', '@broadcast'];
+
+const shouldIgnoreJid = (jid = '') => {
+  if (typeof jid !== 'string') return false;
+  const ignored = IGNORED_JID_SUFFIXES.some((suffix) => jid.endsWith(suffix));
+  if (ignored) {
+    logger.debug({ jid }, 'Ignoring unsupported jid');
+  }
+  return ignored;
+};
+
 const startBot = async () => {
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
 
@@ -26,7 +37,8 @@ const startBot = async () => {
         creds: state.creds,
         keys: makeCacheableSignalKeyStore(state.keys, logger)
       },
-      browser: [process.env.BOT_NAME || 'WarungGo', 'Desktop', '1.0.0']
+      browser: [process.env.BOT_NAME || 'WarungGo', 'Desktop', '1.0.0'],
+      shouldIgnoreJid
     });
 
     sock.ev.on('creds.update', saveCreds);
