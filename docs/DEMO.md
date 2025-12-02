@@ -54,16 +54,7 @@ Scan the QR code when prompted. Logs should show `✅ WarungGo bot berjalan` and
 
 ---
 
-## 4. Visual Assets
-
-Embed or screen-share these placeholders until real screenshots are captured:
-
-![Dashboard](../assets/screenshot_1.png)
-![Chat Flow](../assets/screenshot_2.png)
-
----
-
-## 5. Talking Points
+## 4. Talking Points
 
 - **Instant onboarding**: QR code auth, no extra dashboards.
 - **Live data**: Google Sheets sync every five minutes ensures accurate stock/pricing.

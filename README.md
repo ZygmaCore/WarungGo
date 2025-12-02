@@ -46,13 +46,6 @@ WarungGo is a dual-service toolkit that blends a Baileys-powered WhatsApp bot wi
 
 ---
 
-## 🖼 Screenshot
-
-![Screenshot](assets/screenshot_1.png)
-![Screenshot](assets/screenshot_2.png)
-
----
-
 ## 🛠 Tech Stack
 
 | Technology | Usage |
