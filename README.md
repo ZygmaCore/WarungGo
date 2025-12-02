@@ -77,8 +77,8 @@ WarungGo is a dual-service toolkit that blends a Baileys-powered WhatsApp bot wi
 ### Installation
 
 ```bash
-git clone https://github.com/ZygmaCore/warunggo.git
-cd warunggo
+git clone https://github.com/ZygmaCore/WarungGo.git
+cd WarungGo
 cd wa-bot && npm install
 cd ../ai-service
 python3 -m venv .venv
