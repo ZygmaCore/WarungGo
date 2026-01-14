@@ -8,6 +8,8 @@
 
 <p align="center">
   <img src="assets/zygmacore.jpeg" alt="Logo" width="180">
+</p>
+<p align="center">
   <img src="assets/warunggo.png" alt="Logo" width="180">
 </p>
 
